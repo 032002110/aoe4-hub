@@ -160,6 +160,7 @@ window.Match = (function () {
           ${s.mapBiome ? `<span>地貌：${esc(s.mapBiome)}</span>` : ''}
           ${s.startedAt ? `<span>${new Date(s.startedAt * 1000).toLocaleString('zh-CN')}</span>` : ''}
           ${cur.base && cur.base.season ? `<span>第 ${cur.base.season} 赛季</span>` : ''}
+          <span title="经济曲线与出兵统计均由 replay 文件解析得出，不依赖视频">数据来自 replay 解析</span>
         </div>
         <div class="m-teams">
           ${players.length > 2
@@ -169,10 +170,12 @@ window.Match = (function () {
         <div class="m-actions">
           ${replays.length
             ? replays.map(r => `<a class="btn primary" href="${esc(r.url)}" target="_blank" rel="noopener">▶ 观看 ${esc(r.name)} 的第一视角</a>`).join('')
-            : `<button class="btn" disabled>本局无录像</button>`}
-          ${replays.length ? '' : `<span class="tiny muted" style="align-self:center">
-            录像来自 <b>Twitch 直播存档</b>：只有主播/职业选手直播过的对局才会被收录，普通对局没有录像。
-            想看录像可以去「玩家查询」里找 Twitch 主播的对局。</span>`}
+            : `<button class="btn" disabled>本局无视频画面</button>`}
+          ${replays.length ? '' : `<span class="tiny muted" style="align-self:center;max-width:560px;line-height:1.75">
+            注意：<b>「视频画面」和「数据复盘」是两回事</b>。本局数据复盘是完整的——
+            下面的经济曲线、出兵统计都来自 replay 文件解析，跟有没有视频无关。
+            视频画面需主播直播过才会被 aoe4world 收录；想看画面，
+            可在游戏客户端内直接观看本局回放。</span>`}
           <a class="btn" href="https://aoe4world.com/players/${esc(cur.pid)}/games/${esc(cur.gid)}" target="_blank" rel="noopener">aoe4world 原页 ↗</a>
         </div>
       </div>
