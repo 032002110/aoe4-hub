@@ -74,11 +74,26 @@ window.Match = (function () {
       cur.sum = await window.API.summary(pid, gid);
       render();
     } catch (e) {
+      const st = e && e.status;
+      let title, desc;
+      if (st === 404) {
+        title = '该局暂无复盘数据';
+        desc = '只有上传过录像并经 aoe4world 解析的对局才有经济与出兵明细，较旧或未被解析的对局不提供。';
+      } else if (st === 429 || st === 0) {
+        title = '数据源暂时限流';
+        desc = '复盘接口（返回约 40KB 解析结果）配额较紧，已自动重试仍未成功。稍等一两分钟再点开即可；'
+             + '若经常遇到，可在本机运行 <code>node server.js</code> 用带缓存的代理模式。';
+      } else {
+        title = '复盘数据加载失败';
+        desc = '原因：' + (e && e.message ? e.message : '未知错误');
+      }
       body.innerHTML = `<div class="tab-body">
-        <div class="empty"><b>该局暂无复盘数据</b>
-        只有上传过录像并经 aoe4world 解析的对局才有经济与出兵明细。<br>较旧或未被解析的对局不提供此数据。</div>
+        <div class="empty"><b>${esc(title)}</b>${desc}</div>
+        <div class="m-actions"><button class="btn" id="mRetry">↻ 重试</button></div>
         ${cur.base ? baseInfo(cur.base) : ''}
       </div>`;
+      const rb = body.querySelector('#mRetry');
+      if (rb) rb.onclick = () => open(pid, gid);
       bindClose();
     }
   }

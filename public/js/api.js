@@ -25,25 +25,46 @@ window.API = (function () {
     ? (kind === 'v0' ? '/apiv0' : '/api') + path
     : UPSTREAM + (kind === 'v0' ? '/api/v0' : '') + path;
 
-  async function req(kind, path, { timeout = 25000 } = {}) {
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+  /** 带退避重试的请求；429/5xx 与网络错误会重试 */
+  async function req(kind, path, { timeout = 25000, retries = 2 } = {}) {
     if (!mode) await detect();
-    const ctl = new AbortController();
-    const timer = setTimeout(() => ctl.abort(), timeout);
-    try {
-      const r = await fetch(urlOf(kind, path), {
-        signal: ctl.signal,
-        headers: { Accept: 'application/json' },
-        mode: 'cors'
-      });
-      const txt = await r.text();
-      if (!r.ok) {
-        const err = new Error(`上游返回 ${r.status}`);
-        err.status = r.status;
-        throw err;
+
+    let lastErr = null;
+    for (let i = 0; i <= retries; i++) {
+      const ctl = new AbortController();
+      const timer = setTimeout(() => ctl.abort(), timeout);
+      try {
+        const r = await fetch(urlOf(kind, path), {
+          signal: ctl.signal,
+          headers: { Accept: 'application/json' },
+          mode: 'cors'
+        });
+        if (!r.ok) {
+          // 上游会对重资源端点（如复盘 summary）限流，退避后重试
+          if ((r.status === 429 || r.status >= 500) && i < retries) {
+            lastErr = new Error(`上游返回 ${r.status}`);
+            lastErr.status = r.status;
+            await sleep(900 * (i + 1) + Math.random() * 400);
+            continue;
+          }
+          const err = new Error(r.status === 429 ? '请求过于频繁，请稍后再试' : `上游返回 ${r.status}`);
+          err.status = r.status;
+          throw err;
+        }
+        const txt = await r.text();
+        try { return JSON.parse(txt); }
+        catch (e) { throw new Error('响应不是合法 JSON'); }
+      } catch (e) {
+        lastErr = e;
+        if (i === retries) throw e;
+        await sleep(900 * (i + 1) + Math.random() * 400);
+      } finally {
+        clearTimeout(timer);
       }
-      try { return JSON.parse(txt); }
-      catch (e) { throw new Error('响应不是合法 JSON'); }
-    } finally { clearTimeout(timer); }
+    }
+    throw lastErr || new Error('请求失败');
   }
 
   const q = o => Object.entries(o || {})
