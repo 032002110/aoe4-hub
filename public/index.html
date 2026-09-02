@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AoE4 数据枢纽 · 文明胜率 / 战绩复盘</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='26'>⚔️</text></svg>">
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="wrap bar">
+    <a class="brand" href="#/civs">
+      <span class="brand-mark">⚔️</span>
+      <span class="brand-txt">AoE4 <b>数据枢纽</b></span>
+    </a>
+    <nav class="nav">
+      <a href="#/civs" data-nav="civs">文明胜率</a>
+      <a href="#/matchups" data-nav="matchups">克制关系</a>
+      <a href="#/players" data-nav="players">玩家查询</a>
+      <a href="#/ladder" data-nav="ladder">天梯榜</a>
+    </nav>
+    <div class="search-box">
+      <input id="globalSearch" type="search" placeholder="搜索玩家昵称 / ID…" autocomplete="off" spellcheck="false">
+      <div id="searchResults" class="search-results" hidden></div>
+    </div>
+  </div>
+</header>
+
+<main id="view" class="wrap"></main>
+
+<footer class="foot wrap">
+  <span>数据源：<a href="https://aoe4world.com" target="_blank" rel="noopener">aoe4world.com</a> · 非官方社区项目</span>
+  <span id="footStat"></span>
+</footer>
+
+<!-- 比赛复盘弹窗 -->
+<div id="modal" class="modal" hidden>
+  <div class="modal-bg" data-close></div>
+  <div class="modal-panel">
+    <button class="modal-x" data-close aria-label="关闭">✕</button>
+    <div id="modalBody"></div>
+  </div>
+</div>
+
+<script src="js/data.js"></script>
+<script src="js/charts.js"></script>
+<script src="js/api.js"></script>
+<script src="js/views.js"></script>
+<script src="js/match.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
