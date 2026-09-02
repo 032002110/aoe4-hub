@@ -87,6 +87,15 @@
     }
   }
 
+  // 弹窗关闭逻辑：页面加载时就绑定，不依赖 Match.open() 调用
+  // 避免 modal 在某些异常路径下显示出来时无法关闭
+  document.querySelectorAll('#modal [data-close]').forEach(el => {
+    el.onclick = () => {
+      document.querySelector('#modal').hidden = true;
+      document.body.style.overflow = '';
+    };
+  });
+
   document.addEventListener('click', e => {
     if (!e.target.closest('.search-box')) hideBox();
     // 弹窗内跳转玩家页时自动关闭
