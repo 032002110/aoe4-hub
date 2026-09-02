@@ -32,4 +32,24 @@ jobs:
           probe "https://aoe4world.com/api/v0/players/60328" "玩家档案"
           probe "https://aoe4world.com/api/v0/players/60328/games?limit=5" "战绩列表"
           probe "https://aoe4world.com/api/v0/leaderboards/rm_solo?limit=5" "天梯榜"
-          probe "https://aoe4world.com/players/60328/games/238837186/summary?camelize=true" "比赛复盘 summary"
+
+          # summary 是重资源端点（返回约 40KB 解析结果），限流更严格，逐个退避重试
+          for GID in 238837186 238834708; do
+            for TRY in 1 2 3; do
+              echo "--------------------------------------------"
+              echo "端点: 比赛复盘 summary (game=$GID, 第 $TRY 次)"
+              CODE=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 30 \
+                     -H "Origin: $ORIGIN" -H "User-Agent: $UA" \
+                     "https://aoe4world.com/players/60328/games/$GID/summary?camelize=true")
+              echo "状态码: $CODE"
+              if [ "$CODE" = "200" ]; then
+                curl -sS -D - -o /dev/null --max-time 30 \
+                  -H "Origin: $ORIGIN" -H "User-Agent: $UA" \
+                  "https://aoe4world.com/players/60328/games/$GID/summary?camelize=true" \
+                  | tr -d '\r' | grep -iE "^HTTP/|^access-control-allow-origin|^content-type" || true
+                break
+              fi
+              sleep 12
+            done
+            echo
+          done
