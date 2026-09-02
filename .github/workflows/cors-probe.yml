@@ -1,0 +1,35 @@
+# 数据源健康自检：确认 aoe4world 各端点对本站域名开放 CORS。
+# 纯静态托管（GitHub Pages）依赖浏览器直连，若上游未返回
+# Access-Control-Allow-Origin，对应功能会失效。
+# 手动触发：gh workflow run cors-probe.yml
+name: Data Source Probe
+
+on:
+  workflow_dispatch:
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Probe CORS headers
+        run: |
+          ORIGIN="https://032002110.github.io"
+          UA="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36"
+
+          probe () {
+            echo "--------------------------------------------"
+            echo "端点: $2"
+            echo "路径: $1"
+            curl -sS -D - -o /dev/null --max-time 30 \
+              -H "Origin: $ORIGIN" -H "User-Agent: $UA" "$1" \
+              | tr -d '\r' | grep -iE "^HTTP/|^access-control-allow-origin|^content-type" || echo "  (无响应头)"
+            echo
+          }
+
+          probe "https://aoe4world.com/api/v0/stats/rm_solo/civilizations?rank_level=gold" "文明胜率"
+          probe "https://aoe4world.com/api/v0/stats/rm_solo/matchups?rank_level=gold" "克制矩阵"
+          probe "https://aoe4world.com/api/v0/players/search?query=VortiX" "玩家搜索"
+          probe "https://aoe4world.com/api/v0/players/60328" "玩家档案"
+          probe "https://aoe4world.com/api/v0/players/60328/games?limit=5" "战绩列表"
+          probe "https://aoe4world.com/api/v0/leaderboards/rm_solo?limit=5" "天梯榜"
+          probe "https://aoe4world.com/players/60328/games/238837186/summary?camelize=true" "比赛复盘 summary"
