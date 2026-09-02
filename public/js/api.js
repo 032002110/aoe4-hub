@@ -88,6 +88,31 @@ window.API = (function () {
     search: (query, exact = false) =>
       req('v0', `/players/search?${q({ query, exact: exact ? true : '' })}`),
 
+    /**
+     * 昵称搜索：精确匹配优先。
+     * 上游模糊搜索结果极多（如 "peanut" 有 361 个），精确同名会被排到第一页之外，
+     * 因此先用 exact=true 取出同名玩家置顶，再用模糊结果补全。
+     * 返回 { players, exactCount, total }
+     */
+    searchSmart: async query => {
+      const enc = encodeURIComponent(String(query).trim());
+      let exactP = [], fuzzyP = [];
+      try {
+        const r = await req('v0', `/players/search?query=${enc}&exact=true`);
+        exactP = r.players || [];
+      } catch (e) { /* 精确失败不阻断 */ }
+      try {
+        const r = await req('v0', `/players/search?query=${enc}`);
+        fuzzyP = r.players || [];
+      } catch (e) {
+        if (!exactP.length) throw e;   // 两次都失败才有必要抛错
+      }
+      const seen = new Set(), list = [];
+      for (const p of exactP) { seen.add(p.profile_id); list.push(p); }
+      for (const p of fuzzyP) if (!seen.has(p.profile_id)) list.push(p);
+      return { players: list, exactCount: exactP.length, total: list.length };
+    },
+
     /** 玩家档案 */
     player: id => req('v0', `/players/${encodeURIComponent(id)}`),
 

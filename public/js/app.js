@@ -38,6 +38,16 @@
 
   function hideBox() { box.hidden = true; }
 
+  function agoShort(iso) {
+    if (!iso) return '';
+    const d = (Date.now() - new Date(iso).getTime()) / 1000;
+    if (d < 3600) return `${Math.max(1, Math.floor(d / 60))} 分钟前`;
+    if (d < 86400) return `${Math.floor(d / 3600)} 小时前`;
+    if (d < 2592000) return `${Math.floor(d / 86400)} 天前`;
+    if (d < 31536000) return `${Math.floor(d / 2592000)} 个月前`;
+    return `${Math.floor(d / 31536000)} 年前`;
+  }
+
   input.addEventListener('input', () => {
     clearTimeout(timer);
     const q = input.value.trim();
@@ -59,21 +69,42 @@
     const my = ++seq;
     box.innerHTML = `<div class="sr-item"><div class="loading" style="padding:10px">搜索中…</div></div>`;
     box.hidden = false;
+
+    // 纯数字 = Profile ID，直接取档案（上游 search 接口传数字返回 0 条）
+    if (/^\d+$/.test(q.trim())) {
+      try {
+        const p = await window.API.player(q.trim());
+        if (my !== seq) return;
+        hideBox(); input.value = '';
+        location.hash = `#/player/${p.profile_id}`;
+        return;
+      } catch (e) {
+        if (my !== seq) return;
+        box.innerHTML = `<div class="sr-item"><div class="sr-sub">没有找到 Profile ID ${q.trim()}</div></div>`;
+        return;
+      }
+    }
+
     try {
-      const r = await window.API.search(q);
+      const r = await window.API.searchSmart(q);
       if (my !== seq) return;
       const list = (r.players || []).slice(0, 8);
       box.innerHTML = list.length
         ? list.map(p => {
             const m = (p.leaderboards || {}).rm_solo || {};
+            // 同名玩家很多，必须显示 ID 与近期活跃以便辨认
+            const bits = [];
+            if (p.country) bits.push(p.country.toUpperCase());
+            bits.push('ID ' + p.profile_id);
+            if (m.rating) bits.push('Rating ' + m.rating);
+            if (p.last_game_at) bits.push(agoShort(p.last_game_at));
             return `<div class="sr-item" data-pid="${p.profile_id}">
               ${p.avatars && p.avatars.small
                 ? `<img src="${p.avatars.small}" onerror="this.style.visibility='hidden'">`
                 : `<div style="width:28px;height:28px;border-radius:50%;background:var(--panel)"></div>`}
               <div style="min-width:0">
                 <div class="sr-name">${p.name}</div>
-                <div class="sr-sub">${p.country ? p.country.toUpperCase() + ' · ' : ''}${
-                  m.rating ? `Rating ${m.rating} · ` : ''}${m.games_count ? `${m.games_count} 场` : 'ID ' + p.profile_id}</div>
+                <div class="sr-sub">${bits.join(' · ')}</div>
               </div>
             </div>`;
           }).join('')

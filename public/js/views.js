@@ -29,6 +29,12 @@ window.Views = (function () {
   }
   const loading = t => `<div class="loading"><div class="spinner"></div>${esc(t || '加载中')}…</div>`;
 
+  /* 关键：两个接口的 teams 结构不同，必须归一化
+   *   战绩列表 /players/{id}/games  -> [ [{player:{...}}], [{player:{...}}] ]
+   *   单场详情 /games/{id}          -> [ [{profile_id,...}], [{profile_id,...}] ]
+   */
+  const flatPlayers = teams => (teams || []).flat().map(p => (p && p.player) ? p.player : p).filter(Boolean);
+
   /* ==================== 1. 文明胜率 ==================== */
   let civState = { board: 'rm_solo', rank: '', sort: 'win_rate', data: null };
 
@@ -343,14 +349,34 @@ window.Views = (function () {
 
   async function doSearch(host, q) {
     if (!q) return;
+    const t = String(q).trim();
     const box = host.querySelector('#pResults');
     box.innerHTML = loading('搜索玩家');
+
+    // 纯数字 = Profile ID，直接拉档案（上游 search 接口不认 ID，传数字会返回 0 条）
+    if (/^\d+$/.test(t)) {
+      try {
+        const p = await window.API.player(t);
+        location.hash = `#/player/${p.profile_id}`;
+        return;
+      } catch (e) {
+        box.innerHTML = `<div class="empty"><b>没有找到 Profile ID ${esc(t)}</b>
+          请确认 ID 是否正确。Profile ID 是一串纯数字，在 aoe4world 个人主页网址末尾可以看到。</div>`;
+        return;
+      }
+    }
+
     try {
-      const r = await window.API.search(q);
+      const r = await window.API.searchSmart(t);
       const list = r.players || [];
-      box.innerHTML = list.length
-        ? `<div class="match-list">${list.map(p => playerRow(p)).join('')}</div>`
-        : `<div class="empty"><b>没有找到「${esc(q)}」</b>试试更短的关键词，或直接用 Profile ID</div>`;
+      if (!list.length) {
+        box.innerHTML = `<div class="empty"><b>没有找到「${esc(t)}」</b>试试更短的关键词，或直接用 Profile ID</div>`;
+        return;
+      }
+      const tip = r.exactCount > 1
+        ? `<div class="tiny muted" style="margin-bottom:8px">有 ${r.exactCount} 位玩家同名，按近期活跃排序，结合国家与最近对局时间辨认。</div>`
+        : '';
+      box.innerHTML = tip + `<div class="match-list">${list.slice(0, 20).map(p => playerRow(p)).join('')}</div>`;
       bindPlayerRows(box);
     } catch (e) {
       box.innerHTML = `<div class="err">搜索失败：${esc(e.message)}</div>`;
@@ -380,6 +406,7 @@ window.Views = (function () {
           ${mode.rating ? `<span>Rating ${n0(mode.rating)}</span>` : ''}
           ${mode.rank ? `<span>#${n0(mode.rank)}</span>` : ''}
           ${mode.games_count ? `<span>${n0(mode.games_count)} 场 · 胜率 ${n1(mode.win_rate)}%</span>` : ''}
+          ${p.last_game_at ? `<span>${ago(p.last_game_at)}</span>` : ''}
         </div>
       </div>
       <div class="mr-right"><span class="pill">查看 →</span></div>
@@ -559,8 +586,10 @@ window.Views = (function () {
 
   function matchRow(g, pid) {
     const teams = g.teams || [];
-    const mine = teams.flat().find(p => String(p.profile_id) === String(pid)) || teams[0][0];
-    const foes = teams.find(t => !t.some(p => String(p.profile_id) === String(pid))) || [];
+    const all = flatPlayers(teams);
+    const mine = all.find(p => String(p.profile_id) === String(pid)) || all[0] || {};
+    const foes = teams.map(t => flatPlayers([t]))
+      .find(ps => !ps.some(p => String(p.profile_id) === String(pid))) || [];
     const foe = foes[0] || {};
     const win = mine.result === 'win';
     const rd = mine.rating_diff;

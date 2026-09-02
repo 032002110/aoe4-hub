@@ -8,6 +8,9 @@ window.Match = (function () {
 
   let cur = { pid: null, gid: null, base: null, sum: null, tab: 'overview' };
 
+  /* 与 views.js 相同：战绩列表接口把选手包在 player 字段里，单场接口是扁平的，统一取出 */
+  const flatPlayers = teams => (teams || []).flat().map(p => (p && p.player) ? p.player : p).filter(Boolean);
+
   /* 建造序列 slug -> 中文（匹配时忽略尾部等级数字） */
   const EN_ZH = {
     villager: '村民', scout: '侦察兵', sheep: '羊', deer: '鹿', boar: '野猪',
@@ -108,8 +111,9 @@ window.Match = (function () {
   }
 
   function baseInfo(g) {
-    const mine = g.teams.flat().find(p => String(p.profile_id) === cur.pid) || g.teams[0][0];
-    const url = mine.twitch_video_url || g.teams.flat().map(p => p.twitch_video_url).find(Boolean);
+    const players = flatPlayers(g.teams);
+    const mine = players.find(p => String(p.profile_id) === cur.pid) || players[0] || {};
+    const url = mine.twitch_video_url || players.map(p => p.twitch_video_url).find(Boolean);
     return `<div class="card" style="margin-top:14px"><h3>对局基础信息</h3>
       <div class="stat-grid">
         <div class="stat"><b>${esc(g.map || '—')}</b><span>地图</span></div>
@@ -141,7 +145,7 @@ window.Match = (function () {
     const foeColor = foe ? D.civColor(foe.civilization) : '#f7768e';
 
     const replays = [];
-    if (cur.base) for (const p of cur.base.teams.flat()) {
+    if (cur.base) for (const p of flatPlayers(cur.base.teams)) {
       if (p.twitch_video_url) replays.push({ name: p.name, url: p.twitch_video_url });
     }
 
@@ -193,7 +197,7 @@ window.Match = (function () {
     let rating = null, diff = null;
     const g = cached.find(x => String(x.game_id) === cur.gid);
     if (g) {
-      const m = g.teams.flat().find(x => String(x.profile_id) === String(p.profileId));
+      const m = flatPlayers(g.teams).find(x => String(x.profile_id) === String(p.profileId));
       if (m) { rating = m.rating; diff = m.rating_diff; }
     }
     return `<div class="m-team ${p.result === 'win' ? 'win' : 'loss'}">
