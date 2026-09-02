@@ -1,4 +1,7 @@
 /* ===== AoE4 数据枢纽 · 深色主题 ===== */
+/* hidden 属性的兜底：避免被下面的 .modal { display:flex } 等规则覆盖 specificity */
+[hidden] { display: none !important; }
+
 :root{
   --bg:#0b0e14; --bg2:#111621; --panel:#151b28; --panel2:#1a2130;
   --line:rgba(255,255,255,.09); --line2:rgba(255,255,255,.14);
