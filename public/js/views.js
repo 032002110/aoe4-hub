@@ -41,15 +41,23 @@ window.Views = (function () {
         <p>不同段位下各文明的胜率、选用率与平均时长。数据来自 aoe4world 全量对局采样。</p>
       </div>
       <div class="ctrl-row">
-        <div class="seg" id="segBoard">${D.STATS_BOARDS.map(b =>
-          `<button data-b="${b.id}" class="${b.id === civState.board ? 'on' : ''}">${b.zh}</button>`).join('')}</div>
-        ${ranked ? `<div class="seg" id="segRank">${D.RANKS.map(r =>
-          `<button data-r="${r.id}" class="${r.id === civState.rank ? 'on' : ''}">${r.zh}</button>`).join('')}</div>`
-          : `<span class="pill" title="快速匹配模式上游不区分段位，段位筛选不可用">快速匹配 · 不分档</span>`}
-        <div class="seg" id="segSort">
-          <button data-s="win_rate" class="${civState.sort === 'win_rate' ? 'on' : ''}">按胜率</button>
-          <button data-s="pick_rate" class="${civState.sort === 'pick_rate' ? 'on' : ''}">按选用率</button>
-          <button data-s="games_count" class="${civState.sort === 'games_count' ? 'on' : ''}">按场次</button>
+        <div class="ctrl-group"><span class="ctrl-label">对战模式</span>
+          <div class="seg" id="segBoard">${D.STATS_BOARDS.map(b =>
+            `<button data-b="${b.id}" class="${b.id === civState.board ? 'on' : ''}">${b.zh}</button>`).join('')}</div>
+        </div>
+        ${ranked
+          ? `<div class="ctrl-group"><span class="ctrl-label">段位</span>
+              <div class="seg" id="segRank">${D.RANKS.map(r =>
+                `<button data-r="${r.id}" class="${r.id === civState.rank ? 'on' : ''}">${r.zh}</button>`).join('')}</div>
+            </div>`
+          : `<div class="ctrl-group"><span class="ctrl-label">段位</span>
+              <span class="pill" title="快速匹配模式上游不区分段位，段位筛选不可用">不分档</span></div>`}
+        <div class="ctrl-group"><span class="ctrl-label">排序</span>
+          <div class="seg" id="segSort">
+            <button data-s="win_rate" class="${civState.sort === 'win_rate' ? 'on' : ''}">按胜率</button>
+            <button data-s="pick_rate" class="${civState.sort === 'pick_rate' ? 'on' : ''}">按选用率</button>
+            <button data-s="games_count" class="${civState.sort === 'games_count' ? 'on' : ''}">按场次</button>
+          </div>
         </div>
       </div>
       <div id="civBody">${loading('拉取文明统计')}</div>`;
@@ -148,14 +156,22 @@ window.Views = (function () {
         <p>行 = 你使用的文明，列 = 对手文明，格子是你在这个对位下的胜率。点击任意行查看完整对位明细。</p>
       </div>
       <div class="ctrl-row">
-        <div class="seg" id="muBoard">${D.MATCHUP_BOARDS.map(b =>
-          `<button data-b="${b.id}" class="${b.id === muState.board ? 'on' : ''}">${b.zh}</button>`).join('')}</div>
-        ${ranked ? `<div class="seg" id="muRank">${D.RANKS.map(r =>
-          `<button data-r="${r.id}" class="${r.id === muState.rank ? 'on' : ''}">${r.zh}</button>`).join('')}</div>`
-          : `<span class="pill" title="快速匹配模式上游不区分段位">快速匹配 · 不分档</span>`}
-        <div class="seg" id="muMin">
-          ${[[0, '不限场次'], [30, '≥30 场'], [100, '≥100 场']].map(([v, t]) =>
-            `<button data-m="${v}" class="${Number(v) === muState.minN ? 'on' : ''}">${t}</button>`).join('')}
+        <div class="ctrl-group"><span class="ctrl-label">对战模式</span>
+          <div class="seg" id="muBoard">${D.MATCHUP_BOARDS.map(b =>
+            `<button data-b="${b.id}" class="${b.id === muState.board ? 'on' : ''}">${b.zh}</button>`).join('')}</div>
+        </div>
+        ${ranked
+          ? `<div class="ctrl-group"><span class="ctrl-label">段位</span>
+              <div class="seg" id="muRank">${D.RANKS.map(r =>
+                `<button data-r="${r.id}" class="${r.id === muState.rank ? 'on' : ''}">${r.zh}</button>`).join('')}</div>
+            </div>`
+          : `<div class="ctrl-group"><span class="ctrl-label">段位</span>
+              <span class="pill" title="快速匹配模式上游不区分段位">不分档</span></div>`}
+        <div class="ctrl-group"><span class="ctrl-label">最少样本</span>
+          <div class="seg" id="muMin">
+            ${[[0, '不限场次'], [30, '≥30 场'], [100, '≥100 场']].map(([v, t]) =>
+              `<button data-m="${v}" class="${Number(v) === muState.minN ? 'on' : ''}">${t}</button>`).join('')}
+          </div>
         </div>
       </div>
       <div id="muBody">${loading('拉取 23×23 对位矩阵')}</div>`;
