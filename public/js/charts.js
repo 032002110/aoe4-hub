@@ -44,7 +44,13 @@ window.Charts = (function () {
     }
 
     series.forEach(s => {
-      if (s.points.length < 2) return;
+      if (!s.points.length) return;
+      // 只有 1 个采样点（如秒投局）时画一个点，而不是什么都不画
+      if (s.points.length === 1) {
+        const p = s.points[0];
+        g += `<circle cx="${X(p.x).toFixed(1)}" cy="${Y(p.y).toFixed(1)}" r="3.5" fill="${s.color}"/>`;
+        return;
+      }
       const d = s.points.map((p, i) => `${i ? 'L' : 'M'}${X(p.x).toFixed(1)},${Y(p.y).toFixed(1)}`).join(' ');
       if (opts.areaFill && s.fill) {
         const base = pad.t + ih;

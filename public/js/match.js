@@ -241,8 +241,17 @@ window.Match = (function () {
     </div>`;
   }
 
+  /** 极短局（如开局秒投）上游只给 1 个采样点，画不出曲线，给出明确说明 */
+  function tooShort(m) {
+    return (ts(m) || []).length < 2
+      ? `<div class="empty"><b>本局没有足够数据绘制曲线</b>
+         对局时长仅 ${dur(cur.sum.duration)}（多为开局秒投或掉线），
+         上游没有生成时间序列。总览里的指标对比仍然有效。</div>`
+      : null;
+  }
+
   function tabHtml(tab, m, f, mc, fc) {
-    if (tab === 'econ') return econHtml(m, f, mc, fc);
+    if (tab === 'econ') { const w = tooShort(m); if (w) return w; return econHtml(m, f, mc, fc); }
     if (tab === 'army') return armyHtml(m, f, mc, fc);
     if (tab === 'timeline') return timelineHtml(m, f, mc, fc);
     return overviewHtml(m, f, mc, fc);
