@@ -162,14 +162,17 @@ window.Match = (function () {
           ${cur.base && cur.base.season ? `<span>第 ${cur.base.season} 赛季</span>` : ''}
         </div>
         <div class="m-teams">
-          ${teamCard(mine, cur.pid, true)}
-          <div class="m-vs">VS</div>
-          ${foe ? teamCard(foe, cur.pid, false) : ''}
+          ${players.length > 2
+            ? teamGroupsHtml(players, mine)
+            : `${teamCard(mine, cur.pid, true)}<div class="m-vs">VS</div>${foe ? teamCard(foe, cur.pid, false) : ''}`}
         </div>
         <div class="m-actions">
           ${replays.length
             ? replays.map(r => `<a class="btn primary" href="${esc(r.url)}" target="_blank" rel="noopener">▶ 观看 ${esc(r.name)} 的第一视角</a>`).join('')
-            : `<button class="btn" disabled title="aoe4world 未收录该局录像">无录像</button>`}
+            : `<button class="btn" disabled>本局无录像</button>`}
+          ${replays.length ? '' : `<span class="tiny muted" style="align-self:center">
+            录像来自 <b>Twitch 直播存档</b>：只有主播/职业选手直播过的对局才会被收录，普通对局没有录像。
+            想看录像可以去「玩家查询」里找 Twitch 主播的对局。</span>`}
           <a class="btn" href="https://aoe4world.com/players/${esc(cur.pid)}/games/${esc(cur.gid)}" target="_blank" rel="noopener">aoe4world 原页 ↗</a>
         </div>
       </div>
@@ -177,19 +180,39 @@ window.Match = (function () {
         `<button data-t="${k}" class="${cur.tab === k ? 'on' : ''}">${t}</button>`).join('')}</div>
       <div class="tab-body" id="mTabBody">${tabHtml(cur.tab, mine, foe, mineColor, foeColor)}</div>`;
 
-    body.querySelector('#mTabs').onclick = e => {
-      const t = e.target.dataset.t; if (!t) return;
+    const gotoTab = t => {
       cur.tab = t;
       body.querySelectorAll('#mTabs button').forEach(b => b.classList.toggle('on', b.dataset.t === t));
       body.querySelector('#mTabBody').innerHTML = tabHtml(t, mine, foe, mineColor, foeColor);
       bindTab(mine, foe, mineColor, foeColor);
+      body.querySelector('#mTabs').scrollIntoView({ behavior: 'smooth', block: 'start' });
     };
+    body.querySelector('#mTabs').onclick = e => {
+      const t = e.target.dataset.t; if (!t) return;
+      gotoTab(t);
+    };
+    // 概览页的快捷跳转按钮
+    body.querySelectorAll('[data-gotab]').forEach(b => {
+      b.onclick = () => gotoTab(b.dataset.gotab);
+    });
     bindClose();
     bindTab(mine, foe, mineColor, foeColor);
   }
 
   function bindTab(mine, foe, mc, fc) {
     // 预留交互钩子（当前图表为静态 SVG）
+  }
+
+  /** 团队赛（3v3 / 4v4）：按队伍分组列出全部选手，我方高亮 */
+  function teamGroupsHtml(players, mine) {
+    const mineTeam = mine.team;
+    const mates = players.filter(p => p.team === mineTeam);
+    const foes = players.filter(p => p.team !== mineTeam);
+    const group = (title, list, isMine) => `<div class="m-team-group${isMine ? ' mine' : ''}">
+      <div class="mtg-head">${title}（${list.length} 人）</div>
+      ${list.map(p => teamCard(p, cur.pid, isMine)).join('')}
+    </div>`;
+    return group('我方', mates, true) + '<div class="m-vs">VS</div>' + group('对手', foes, false);
   }
 
   function teamCard(p, pid, isMine) {
@@ -236,6 +259,12 @@ window.Match = (function () {
       ['总消耗资源', (m.totalResourcesSpent || {}).total || 0, (f ? (f.totalResourcesSpent || {}).total : 0) || 0, v => n0(v)],
       ['总分', (m.scores || {}).total || 0, (f ? (f.scores || {}).total : 0) || 0, v => n0(v)]
     ];
+    // 累计资源曲线：开局第一眼就能看到经济走势，不必切到「经济复盘」
+    const cum = [];
+    cum.push({ name: m.name, color: mc, points: ts(m).map((t, i) => ({ x: t, y: (m.resources.total || [])[i] || 0 })), fill: true });
+    if (f) cum.push({ name: f.name, color: fc, points: ts(f).map((t, i) => ({ x: t, y: (f.resources.total || [])[i] || 0 })), fill: true });
+    const cumChart = C.line(cum, { h: 210, areaFill: true, fmtX: v => `${Math.round(v / 60)}m`, fmtY: v => n0(v) });
+
     return `<div class="card"><h3>关键指标对比</h3>
       <div class="vs-list">${rows.map(([k, a, b, fmt]) => C.versus(k,
         { value: a, text: fmt(a), color: mc }, { value: b, text: fmt(b), color: fc })).join('')}</div>
@@ -243,7 +272,21 @@ window.Match = (function () {
       ${scoreBars(m, 'left')}
       ${f ? scoreBars(f, 'right') : ''}
     </div>
-    <div class="tiny muted" style="margin-top:10px">点击上方「经济复盘」「出兵贡献」查看逐项拆解与时间序列曲线。</div>`;
+    <div class="card"><h3>累计资源曲线</h3>
+      <div class="tiny muted" style="margin-bottom:6px">纵轴为已采集资源总量，<b>两条线分岔的位置</b>就是经济差距拉开的时刻。</div>
+      ${cumChart}
+    </div>
+    <div class="card"><h3>还想看更细的？</h3>
+      <div class="tiny muted" style="line-height:1.9">
+        ▸ <b>经济复盘</b>：资源构成、采集速率（资源/分钟）、资源存量、村民增长曲线、经济评分走势<br>
+        ▸ <b>出兵贡献</b>：产兵 / 击杀 / 损失 / 交换比、杀农与损农、科技数、兵力构成<br>
+        ▸ <b>时间轴</b>：时代升级节点、逐项建筑与单位的产出时刻、科技升级时间线
+      </div>
+      <div class="m-actions">
+        <button class="btn" data-gotab="econ">去看经济复盘 →</button>
+        <button class="btn" data-gotab="army">去看出兵贡献 →</button>
+      </div>
+    </div>`;
   }
 
   function scoreBars(p, side) {
